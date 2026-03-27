@@ -1,0 +1,354 @@
+---
+title: "Client Report - Can You Predict That?"
+subtitle: "Course DS 250"
+author: "Micah Earl"
+format:
+  html:
+    self-contained: true
+    page-layout: full
+    title-block-banner: true
+    toc: true
+    toc-depth: 3
+    toc-location: body
+    number-sections: false
+    html-math-method: katex
+    code-fold: true
+    code-summary: "Show the code"
+    code-overflow: wrap
+    code-copy: hover
+    code-tools:
+        source: false
+        toggle: true
+        caption: See code
+execute: 
+  warning: false
+    
+---
+
+```{python}
+import pandas as pd 
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LogisticRegression
+from lets_plot import *
+LetsPlot.setup_html(isolated_frame=True)
+from lets_plot import ggplot, aes, geom_bar, coord_flip, labs, ggsize
+
+
+```
+
+
+```{python}
+# Learn morea about Code Cells: https://quarto.org/docs/reference/cells/cells-jupyter.html
+# Load the data
+url = "https://raw.githubusercontent.com/byuidatascience/data4dwellings/master/data-raw/dwellings_ml/dwellings_ml.csv"
+df = pd.read_csv(url)
+
+df.head()
+```
+
+## Elevator pitch
+_A SHORT (2-3 SENTENCES) PARAGRAPH THAT `DESCRIBES KEY INSIGHTS` TAKEN FROM METRICS IN THE PROJECT RESULTS THINK TOP OR MOST IMPORTANT RESULTS._ Our machine learning model can successfully classify whether a house was built before or after 1980 with over 91% accuracy using structural housing characteristics such as living area, number of bathrooms, and other physical features. The Random Forest model performed especially well because it captures complex relationships between variables that simpler models might miss. These results suggest that even without the year built variable itself, structural home features provide strong signals about the era in which a home was constructed.
+
+_A Client has requested this analysis and this is your one shot of what you would say to your boss in a 2 min elevator ride before he takes your report and hands it to the client._
+
+## QUESTION|TASK 1
+
+__Create 2-3 charts that evaluate potential relationships between the home variables and `before1980`.__ Explain what you learn from the charts that could help a machine learning algorithm. 
+
+The histogram shows a clear shift around 1980, with older homes concentrated in earlier decades and newer homes appearing after 1980. This indicates that yrbuilt is a highly predictive feature. However, because the target variable is directly defined by year built, including yrbuilt in the model may introduce data leakage, allowing the model to simply memorize the cutoff rather than learn broader structural patterns.
+
+```{python}
+# Include and execute your code here
+ggplot(df, aes(x='yrbuilt', fill='before1980')) + \
+    geom_histogram(binwidth=2, alpha=0.7, position='identity') + \
+    labs(
+        title='Year Built Distribution by Before 1980',
+        x='Year Built',
+        y='Count'
+    )
+
+```
+
+```{python}
+ ggplot(df, aes(x='livearea', fill='before1980')) + \
+    geom_density(alpha=0.5) + \
+    labs(
+        title='Living Area Distribution by Before 1980',
+        x='Living Area (sq ft)',
+        y='Density'
+    )
+
+
+```
+
+
+``` {python}
+ggplot(df, aes(x='stories', fill='before1980')) + \
+    geom_bar(position='dodge') + \
+    labs(
+        title='Number of Stories by Before 1980',
+        x='Number of Stories',
+        y='Count'
+    )
+```
+
+The bar chart shows the distribution of the number of stories for homes built before and after 1980. Most homes in the dataset have one or two stories, while very few have three or more. Because both groups appear in similar categories, the number of stories alone does not strongly separate older and newer homes. However, it may still contribute useful structural information when combined with other features in a machine learning model.
+
+```{python}
+ggplot(df, aes(x='numbaths', fill='before1980')) + \
+    geom_bar(position='dodge') + \
+    labs(
+        title='Number of Bathrooms by Before 1980',
+        x='Number of Bathrooms',
+        y='Count'
+    )
+```
+
+## QUESTION|TASK 2
+
+__Build a classification model labeling houses as being built “before 1980” or “during or after 1980”.__ A Random Forest classification model was selected because it performs well on structured tabular data and can capture complex interactions between variables. The model was trained using 200 trees with a maximum depth of 12 to balance model complexity and overfitting.
+
+The variable yrbuilt was intentionally removed from the dataset because the target variable (before1980) is directly derived from it. Including this variable would create data leakage and allow the model to simply memorize the cutoff year instead of learning meaningful patterns.
+
+Other potential models considered include Logistic Regression and Decision Trees. Logistic Regression is simpler but may not capture nonlinear relationships between housing features. Decision Trees are easy to interpret but can overfit the training data. Random Forest improves upon Decision Trees by averaging many trees together, leading to better generalization and higher predictive accuracy. 
+
+```{python}
+# Include and execute your code here
+
+# Drop columns we should not use
+X = df.drop(columns=['before1980', 'parcel', 'yrbuilt'])
+y = df['before1980']
+
+# Train / test split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+# Build model
+model = RandomForestClassifier(
+    n_estimators=200,
+    max_depth=12,
+    random_state=42
+)
+
+# Train
+model.fit(X_train, y_train)
+
+# Predict
+predictions = model.predict(X_test)
+
+# Accuracy
+accuracy = accuracy_score(y_test, predictions)
+print("Accuracy:", accuracy)
+
+
+
+```
+
+
+## QUESTION|TASK 3
+
+__Justify your classification model by discussing the most important features selected by your model.__ 
+The feature importance chart shows which variables contributed the most to the classification model. Features such as living area, number of bathrooms, and other structural characteristics were among the most important predictors.
+
+Larger homes and homes with more bathrooms tend to be associated with newer construction trends, while smaller homes are more common in older housing stock. The Random Forest algorithm measures feature importance by evaluating how much each variable reduces prediction error across the trees in the forest.
+
+Understanding feature importance helps validate that the model is learning meaningful housing characteristics rather than relying on random patterns.
+
+```{python}
+# Include and execute your code here
+# Feature importance
+importances = pd.DataFrame({
+    "feature": X.columns,
+    "importance": model.feature_importances_
+}).sort_values("importance", ascending=False)
+
+importances
+
+```
+
+```{python}
+
+top_features = importances.head(10).sort_values("importance", ascending=True)
+
+ggplot(top_features, aes(x='feature', y='importance')) + \
+    geom_bar(stat='identity') + \
+    coord_flip() + \
+    labs(
+        title='Top Feature Importance for Predicting Homes Built Before 1980',
+        x='Feature',
+        y='Importance Score'
+    ) + \
+    ggsize(700, 400)
+
+```
+
+
+
+## QUESTION|TASK 4
+
+__Describe the quality of your classification model using 2-3 different evaluation metrics.__ 
+Three evaluation metrics were used to assess the quality of the classification model: accuracy, precision, and recall.
+
+Accuracy measures the proportion of total predictions that the model classified correctly. The model achieved 91% accuracy, meaning that the majority of homes were correctly classified as either before or after 1980.
+
+Precision measures how often the model's predictions for a class are correct. In this case, it reflects how reliable the model is when predicting a home was built before 1980 the precision for our model reached 89%.
+
+Recall measures how well the model identifies all homes that truly belong to a class. A high recall means the model successfully identifies most homes built before 1980 without missing many.
+
+Together, these metrics indicate that the model performs well and can reliably classify housing age categories.
+
+
+```{python}
+# Include and execute your code here
+cm = confusion_matrix(y_test, predictions)
+
+cm_df = pd.DataFrame(cm,
+                     index=["Actual Before 1980","Actual After 1980"],
+                     columns=["Pred Before 1980","Pred After 1980"])
+cm_df
+```
+
+```{python}
+cm_df = pd.DataFrame(cm,
+                     index=["Actual Before 1980","Actual After 1980"],
+                     columns=["Pred Before 1980","Pred After 1980"])
+
+cm_plot = cm_df.reset_index().melt(id_vars='index')
+cm_plot.columns = ['Actual','Predicted','Count']
+
+ggplot(cm_plot, aes(x='Actual', y='Predicted', fill='Count')) + \
+    geom_tile() + \
+    labs(
+        title="Confusion Matrix",
+        x="Actual Class",
+        y="Predicted Class"
+    )
+```
+
+```{python}
+print(classification_report(y_test, predictions))
+```
+
+
+## STRETCH QUESTION|TASK 1
+
+__Repeat the classification model using 3 different algorithms.__ Display their Feature Importance, and Decision Matrix. Explian the differences between the models and which one you would recommend to the Client.   
+
+Three different classification algorithms were compared: Random Forest, Decision Tree, and Logistic Regression.
+
+The Random Forest model achieved the highest accuracy because it combines the predictions of many decision trees, reducing overfitting and capturing more complex relationships in the housing data. The Decision Tree model performed reasonably well but was slightly less stable because it relies on a single tree structure, which can overfit the training data.
+
+Logistic Regression produced the simplest model and is easy to interpret, but it assumes a linear relationship between the predictors and the outcome. Because housing characteristics often interact in nonlinear ways, Logistic Regression performed slightly worse than the tree-based models.
+
+Overall, the Random Forest model is recommended for the client because it provides the best balance of predictive accuracy and robustness when working with structured housing data.
+
+```{python}
+# Include and execute your code here
+
+# Define the 3 models
+models = {
+    "Random Forest": RandomForestClassifier(n_estimators=200, max_depth=12, random_state=42),
+    "Decision Tree": DecisionTreeClassifier(max_depth=10, random_state=42),
+    "Logistic Regression": LogisticRegression(max_iter=1000)
+}
+
+results = {}
+
+for name, model in models.items():
+    model.fit(X_train, y_train)
+    preds = model.predict(X_test)
+    
+    acc = accuracy_score(y_test, preds)
+    cm = confusion_matrix(y_test, preds)
+    
+    print(f"\n{name}")
+    print("Accuracy:", acc)
+    print("Confusion Matrix:\n", cm)
+    print("Classification Report:\n", classification_report(y_test, preds))
+    
+    results[name] = (model, acc, cm)
+
+```
+
+
+## STRETCH QUESTION|TASK 2
+
+__Join the `dwellings_neighborhoods_ml.csv` data to the `dwelling_ml.csv` on the `parcel` column to create a new dataset. Duplicate the code for the stretch question above and update it to use this data.__ Explain the differences and if this changes the model you recomend to the Client.   
+
+Neighborhood-level variables such as zoning characteristics, housing density, and regional development patterns provide additional context for predicting housing age. After joining the neighborhood dataset, the model gained access to more environmental and geographic features. These additional predictors slightly improved the model’s performance because homes built during the same time periods tend to cluster in specific neighborhoods.
+
+Because the Random Forest model benefits from larger feature sets and complex interactions, it remains the recommended model after adding the neighborhood data.
+
+```{python}
+# Include and execute your code here
+# Load neighborhood dataset
+url2 = "https://raw.githubusercontent.com/byuidatascience/data4dwellings/master/data-raw/dwellings_neighborhoods_ml/dwellings_neighborhoods_ml.csv"
+neigh = pd.read_csv(url2)
+
+# Join datasets
+df2 = df.merge(neigh, on="parcel")
+
+df2.head()
+
+```
+
+```{python}
+X2 = df2.drop(columns=['before1980','parcel','yrbuilt'])
+y2 = df2['before1980']
+
+X2_train, X2_test, y2_train, y2_test = train_test_split(
+    X2, y2, test_size=0.2, random_state=42
+)
+
+rf2 = RandomForestClassifier(n_estimators=200, max_depth=12, random_state=42)
+rf2.fit(X2_train, y2_train)
+
+pred2 = rf2.predict(X2_test)
+
+print("Accuracy with neighborhood data:", accuracy_score(y2_test, pred2))
+```
+
+## STRETCH QUESTION|TASK 3
+
+__Can you build a model that predicts the year a house was built?__ Explain the model and the evaluation metrics you would use to determine if the model is good.  
+
+To predict the exact year a house was built, the problem becomes a regression task rather than classification. A Random Forest Regressor was used because it performs well with nonlinear relationships and structured tabular data.
+
+Two evaluation metrics were used to evaluate the model:
+
+Mean Absolute Error (MAE): measures the average difference between predicted and actual years built.
+
+R² Score: measures how well the model explains variation in the year built.
+
+A good model would have a low MAE (small prediction errors) and an R² value close to 1, indicating that the model explains most of the variability in housing construction years.
+
+```{python}
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, r2_score
+
+# Regression target
+Xr = df.drop(columns=['yrbuilt','before1980','parcel'])
+yr = df['yrbuilt']
+
+Xr_train, Xr_test, yr_train, yr_test = train_test_split(
+    Xr, yr, test_size=0.2, random_state=42
+)
+
+reg = RandomForestRegressor(n_estimators=200, max_depth=12, random_state=42)
+
+reg.fit(Xr_train, yr_train)
+
+yr_pred = reg.predict(Xr_test)
+
+print("MAE:", mean_absolute_error(yr_test, yr_pred))
+print("R2:", r2_score(yr_test, yr_pred))
+
+```
+
+---

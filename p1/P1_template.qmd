@@ -1,0 +1,179 @@
+---
+title: "Client Report - What's in a Name?"
+subtitle: "Course DS 250"
+author: "[Micah Earl]"
+format:
+  html:
+    self-contained: true
+    page-layout: full
+    title-block-banner: true
+    toc: true
+    toc-depth: 3
+    toc-location: body
+    number-sections: false
+    html-math-method: katex
+    code-fold: true
+    code-summary: "Show the code"
+    code-overflow: wrap
+    code-copy: hover
+    code-tools:
+        source: false
+        toggle: true
+        caption: See code
+execute: 
+  warning: false
+    
+---
+
+```{python}
+import pandas as pd
+import numpy as np
+from lets_plot import *
+
+LetsPlot.setup_html(isolated_frame=True)
+```
+
+
+## Project Notes
+
+__For Project 1 the answer to each question should include a chart **and** a written response. The years labels on your charts should not include a comma. At least **two** of your charts must include reference marks.__  
+
+```{python}
+# Learn morea about Code Cells: https://quarto.org/docs/reference/cells/cells-jupyter.html
+
+# 
+df = pd.read_csv("https://github.com/byuidatascience/data4names/raw/master/data-raw/names_year/names_year.csv")
+```
+
+## QUESTION|TASK 1
+
+__How does your name at your birth year compare to its use historically?__
+
+My name (Micah) has gotten much more popular over the years. The name Micah started increasing in popluarity from 1970 and has been growing since. I was born in 2004 and since then you can see that my name has had a continual rise. 
+
+```{python}
+# Include and execute your code here
+names_w_micah = df[df['name'] == 'Micah']
+birth_year_row = names_w_micah[names_w_micah['year'] == 2004]
+birth_year_row = names_w_micah[names_w_micah['year'] == 2004]
+
+
+ggplot(names_w_micah, aes(x="year", y="Total")) +geom_point() + geom_point(data=birth_year_row, size=5, color="blue") + geom_text(data=birth_year_row, label="My birth year", vjust=-1, size=10) + scale_x_continuous(format = 'd') + ggtitle('My birth year')
+
+
+
+```
+
+
+## QUESTION|TASK 2
+__If you talked to someone named Brittany on the phone, what is your guess of his or her age? What ages would you not guess?__
+
+My guess if it needed to be exact would be the year 1,991, with their birth month being in may. I got this answer by simply finding the mean of all Brittnys. if i were to give a range it would be between 1977 - 2005 before and after the popularity of the name drastically diminishes. I got this answer by using adding and subtracting the std from the mean. To give an answer for what ages would I personally not guess would be 1968 - 1976 and 2006 - 2015
+```{python}
+# Include and execute your code here
+names_w_Brittany = df[df['name'] == 'Brittany']
+brittany_mean = names_w_Brittany['year'].mean()
+std_year = names_w_Brittany['year'].std()
+
+(
+    ggplot(names_w_Brittany, aes(x="year", y="Total"))
+    + geom_point(alpha=0.5, size=3)
+    + geom_vline(xintercept=brittany_mean)
+    + geom_vline(xintercept=brittany_mean - std_year, linetype="dashed")
+    + geom_vline(xintercept=brittany_mean + std_year, linetype="dashed")
+    + ggtitle("Gussing the age of Brittnay")
+    + scale_x_continuous(format = 'd')
+
+)
+
+```
+
+
+## QUESTION|TASK 3
+
+__Mary, Martha, Peter, and Paul are all Christian names. From 1920 - 2000, compare the name usage of each of the four names in a single chart. What trends do you notice?__
+
+The chart shows a high frequency of usage for each of these names across the years, especially for the name Mary. A clear similarity among the names is that their popularity peaks around 1952. After this point, the data indicates a steady decline in usage, suggesting that these names have become less popular over time. 
+
+
+```{python}
+# Include and execute your code here
+mary_martha_peter_paul = df[df['name'].isin(['Mary', 'Martha', 'Peter', 'Paul'])]
+ggplot(mary_martha_peter_paul, aes(x="year", y="Total", color="name")) \
+    + geom_line(size=1.5) \
+    + geom_point(alpha=0.6, size=2) \
+    + ggtitle("Popularity of Names Over Time") \
+    + labs(x="Year", y="Total Births") \
+    + scale_x_continuous(format = 'd')
+
+```
+
+
+
+## QUESTION|TASK 4
+
+__Think of a unique name from a famous movie. Plot the usage of that name and see how changes line up with the movie release. Does it look like the movie had an effect on usage?__  
+
+The name I thought of was Sally from the famous Disney Movie Cars. however to my surprise The name Sally was a very popluar name from around 1920 - 1960 after that popularity decressed very quickly. As noted in the graph. We can tell that the release of the movie cars seem to had very little affect on the popluarity as after the release we see no real change. 
+```{python}
+# Include and execute your code here
+name_Sally = df[df['name'] == 'Sally']
+
+
+(
+  ggplot(name_Sally, aes(x="year", y="Total")) + geom_point()
+  + geom_vline(xintercept=2006, color="green" ) + geom_text(x=2004, y=3000, label="Year Cars was released", angle=90, color="red") + ggtitle("Popularity of the name Sally")
+  + scale_x_continuous(format = 'd')
+)
+
+
+```
+
+---
+
+## STRETCH QUESTION|TASK 1
+
+__Reproduce the chart Elliot using the data from the `names_year.csv` file.__ 
+
+The popularity of the name Elliot appears to increase over time; however, following each movie release, there is a noticeable decline in usage. This suggests that the films did not lead to a sustained increase in the name’s popularity. An exception occurs after the third release, where there is a significant increase; however, the data shows that the name was already rising prior to the movie’s release, indicating the increase may not be directly caused by the film.
+
+```{python}
+# Include and execute your code here
+name_Elliot = df[df['name'] == 'Elliot' ]
+
+(
+    ggplot(name_Elliot, aes(x="year", y="Total",))
+    + geom_line(size=1.5, color="blue")
+    + geom_point(alpha=0.6, size=2)
+    + geom_vline(xintercept=1982, linetype="dashed", color='red') 
+    + geom_vline(xintercept=1985, linetype="dashed", color='red') 
+    + geom_vline(xintercept=2002, linetype="dashed", color='red') 
+)
+
+
+
+
+```
+
+
+---
+
+
+```{python}
+
+# Read in libraries
+import pandas as pd
+import numpy as np
+from lets_plot import *
+LetsPlot.setup_html(isolated_frame=True)
+df = pd.read_json("https://github.com/byuidatascience/data4missing/raw/master/data-raw/flights_missing/flights_missing.json")
+
+```
+
+```{python}
+(df["month"] == "n/a").sum()
+# Count missing values per column
+df.isna().sum()
+
+
+```
